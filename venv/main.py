@@ -1,4 +1,6 @@
 from loguru import logger
+from alpha_vantage.timeseries import TimeSeries
+import os
 
 import universe
 import dataHandling as DH
@@ -6,11 +8,14 @@ import settings
 
 logger.info("Starting " + __file__ )
 
+
 def initialize():
     logger.info("Initializing and loading settings.")
 
     todoLogLevel = logger.level("TODO", no=10, color="<blue>")
     logger.info(f"Additional log level added for TODO: {todoLogLevel}")
+
+    ts = TimeSeries(key=os.environ['ALPHAVANTAGE_API_KEY'])
 
     universe.init()
     DH.init()
@@ -19,6 +24,8 @@ def initialize():
     outstandingIndices = []
     populatedIndices = []
 
+    dataToSave = []
+
     settings.loadSettings()
     if settings.debugLevel:
         uni = universe.testUniverse()
@@ -26,14 +33,14 @@ def initialize():
         uni = universe.holdings()
     logger.info(f"Universe set to {uni}")
 
-    return outstandingIndices, populatedIndices, uni
+    return outstandingIndices, populatedIndices, uni, dataToSave, ts
 
 
 if __name__ == "__main__":
     """Run the main program step here
 
     Step 1: See if any data is (a) populated, and (b) fresh
-    Step 2: Determine is any data is outstanding
+    Step 2: Determine if any data is outstanding
     Step 3: Pull any outstanding data
     Step 4: Save the data to disk
     Step 5: Do data handling and parsing
@@ -42,7 +49,7 @@ if __name__ == "__main__":
     Step 8: Output to dashboard"""
 
     # Initialize:
-    outstandingIndices, populatedIndices, uni = initialize()
+    outstandingIndices, populatedIndices, uni, dataToSave, ts = initialize()
 
     #Step 1a: See if any data is populated
 
@@ -59,6 +66,7 @@ if __name__ == "__main__":
             populatedIndices.append(index)
             logger.info(f"The list of populated indeces is now: {populatedIndices}")
         else:
+            #Step 2: Determine if any data is outstanding
             logger.info(f"No file exists for {index}, so mark data as outstanding.")
             outstandingIndices.append(index)
             logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
@@ -77,4 +85,18 @@ if __name__ == "__main__":
             logger.log("TODO", "TODO: 10) Remove the index from populatedIndices. I don't think that I'll use populatedIndices again in this script, but I should still do this at some point.")
             logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
 
-    
+    #Step 3: Pull any outstanding data
+    logger.info("Pull any outstanding data.")
+    for index in outstandingIndices:
+        data = []
+        meta_data = []
+
+        logger.info(f"Download data for {index}.")
+        data, meta_data = ts.get_intraday(index)
+        if ((not data) and (not meta_data)):
+            logger.critical(f"No data pulled down for {index}.")
+        else:
+            logger.info(f"Send the data and metadata for {index} to be saved to disk.")
+            print(meta_data)
+            DH.saveToDisk(index, meta_data, data)
+
