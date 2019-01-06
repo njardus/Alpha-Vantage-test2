@@ -1,9 +1,16 @@
 from loguru import logger
 import json
-import codecs
+import os
 
 def init():
-    logger.info("Nothing to initialize in dataHandling *yet*.")
+    logger.info("Initializing dataDownload")
+
+    dirName ="../data"
+    if not os.path.exists(dirName):
+        os.mkdir(dirName)
+        logger.info("Directory ", dirName, " Created ")
+    else:
+        logger.info("Directory ", dirName, " already exists")
 
 def fileExists(ticker):
     """Function fileExists determines if the csv data file for the given ticker code input argument already exists.
@@ -17,7 +24,7 @@ def fileExists(ticker):
     returnValue = True
 
     # Generate filename
-    filename = generateFilename(ticker)
+    filename = generateDownloadFilename(ticker)
 
     try:
         logger.info("Trying to open file.")
@@ -30,7 +37,7 @@ def fileExists(ticker):
     return returnValue
 
 
-def generateFilename(ticker):
+def generateDownloadFilename(ticker):
     filename = '..\\data\\' + 'stock_market_data-%s.csv' % ticker
     return filename
 
@@ -47,8 +54,8 @@ def isDataFresh(ticker, age):
     logger.log("TODO", "TODO: 2) Create an index csv where we record each data fetch transaction. Col 1 is ticker code, Col 2 timestamp, Col 3 success bool. This will assist with the isDataFresh function.")
     logger.info("Complete isDataFresh method. This will require implimenting an index csv file.")
 
-    ## Dummy return so that we *always* pull fresh data until this is implimented properly.
-    return False
+    ## Dummy return so that we don't *always* pull fresh data until this is implimented properly.
+    return True
 
 
 def saveToDisk(ticker, meta_data, data):
@@ -59,9 +66,12 @@ def saveToDisk(ticker, meta_data, data):
     data, the data returned by the alpha_vantage time series function."""
     logger.info("Start the saveToDisk function.")
 
-    filename = generateFilename(ticker)
+    filename = generateDownloadFilename(ticker)
 
     logger.info(f"Filename generated: {filename}")
-    with open(filename, 'wb') as f:
+
+    logger.info("Trying to open file.")
+    logger.info(f"File location: {filename}")
+    with open(filename, 'w') as f:
         json.dump(meta_data, f, sort_keys=False, indent=4)
         json.dump(data, f, sort_keys=False, indent=4)

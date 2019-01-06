@@ -3,8 +3,10 @@ from alpha_vantage.timeseries import TimeSeries
 import os
 
 import universe
-import dataHandling as DH
+import dataDownload as DD
+import data as DP
 import settings
+
 
 logger.info("Starting " + __file__ )
 
@@ -18,7 +20,8 @@ def initialize():
     ts = TimeSeries(key=os.environ['ALPHAVANTAGE_API_KEY'])
 
     universe.init()
-    DH.init()
+    DD.init()
+    DP.init()
     settings.init()
 
     outstandingIndices = []
@@ -61,7 +64,7 @@ if __name__ == "__main__":
     logger.info("Iterate through the universe")
     for index in uni:
         logger.info(f"Test if {index} has a file populated")
-        if DH.fileExists(index):
+        if DD.fileExists(index):
             logger.info(f"File exists for {index}")
             populatedIndices.append(index)
             logger.info(f"The list of populated indeces is now: {populatedIndices}")
@@ -77,12 +80,13 @@ if __name__ == "__main__":
     logger.info("Iterate through the populated universe.")
     for index in populatedIndices:
         logger.info(f"Test if the data on disk for {index} if fresh.")
-        if DH.isDataFresh(index,settings.maximumDataAge):
+        if DD.isDataFresh(index, settings.maximumDataAge):
             logger.info(f"Data for {index} is fresh enough.")
         else:
             logger.info(f"Data for {index} is out of date, so add to the outstanding list.")
             outstandingIndices.append(index)
-            logger.log("TODO", "TODO: 10) Remove the index from populatedIndices. I don't think that I'll use populatedIndices again in this script, but I should still do this at some point.")
+            logger.log("TODO", "TODO: 10) Remove the index from populatedIndices. I don't think that I'll use"
+                               " populatedIndices again in this script, but I should still do this at some point.")
             logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
 
     #Step 3: Pull any outstanding data
@@ -97,6 +101,37 @@ if __name__ == "__main__":
             logger.critical(f"No data pulled down for {index}.")
         else:
             logger.info(f"Send the data and metadata for {index} to be saved to disk.")
+            #Step 4: Save the data to disk
             print(meta_data)
-            DH.saveToDisk(index, meta_data, data)
+            DD.saveToDisk(index, meta_data, data)
 
+    #Step 5: Do data handling and parsing
+    #Load file to memory
+    logger.info("Initialize CSVData and parsedData")
+    CSVData = []
+    parsedData = []
+
+    if settings.debugLevel:
+        outstandingIndices = uni
+    for index in outstandingIndices:
+        logger.info(f"Attempting to load CSV for {index}.")
+        CSVData = DP.loadFile(index)
+
+        # Do parsing
+        logger.info(f"Parse the CSV for {index}.")
+        parsedData = DP.parseData(CSVData)
+
+        # Save to new file
+        logger.info(f"Save the parsed data for {index} to disk.")
+        DP.saveToDisk(index, CSVData)
+
+
+    #Step 6: Do analysis
+    #Write a couple of analysis functions, start with Simple Moving Average, year-on-year growth on a specific date.
+
+    #Step 7: Output to file
+    #Output all analysis and resulting signals to a new file.
+
+    #Step 8: Output to dashboard
+    #Load up output file
+    #Process into dashboard
