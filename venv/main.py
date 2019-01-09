@@ -4,11 +4,10 @@ import os
 
 import universe
 import dataDownload as DD
-import data as DP
+import dataParsing as DP
 import settings
 
-
-logger.info("Starting " + __file__ )
+logger.info("Starting " + __file__)
 
 
 def initialize():
@@ -54,10 +53,10 @@ if __name__ == "__main__":
     # Initialize:
     outstandingIndices, populatedIndices, uni, dataToSave, ts = initialize()
 
-    #Step 1a: See if any data is populated
+    # Step 1a: See if any data is populated
 
     logger.log("TODO", "TODO: 4) Change over from CSV files to a proper database.")
-    #Initially we'll do this with CSV's, but we'll port to DB's at some point.
+    # Initially we'll do this with CSV's, but we'll port to DB's at some point.
 
     logger.info("Test if data is populated")
 
@@ -69,12 +68,12 @@ if __name__ == "__main__":
             populatedIndices.append(index)
             logger.info(f"The list of populated indeces is now: {populatedIndices}")
         else:
-            #Step 2: Determine if any data is outstanding
+            # Step 2: Determine if any data is outstanding
             logger.info(f"No file exists for {index}, so mark data as outstanding.")
             outstandingIndices.append(index)
             logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
 
-    #Step 1b: See if populated data is fresh
+    # Step 1b: See if populated data is fresh
     logger.info("Test if populated data is fresh.")
 
     logger.info("Iterate through the populated universe.")
@@ -89,7 +88,7 @@ if __name__ == "__main__":
                                " populatedIndices again in this script, but I should still do this at some point.")
             logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
 
-    #Step 3: Pull any outstanding data
+    # Step 3: Pull any outstanding data
     logger.info("Pull any outstanding data.")
     for index in outstandingIndices:
         data = []
@@ -101,12 +100,12 @@ if __name__ == "__main__":
             logger.critical(f"No data pulled down for {index}.")
         else:
             logger.info(f"Send the data and metadata for {index} to be saved to disk.")
-            #Step 4: Save the data to disk
+            # Step 4: Save the data to disk
             print(meta_data)
             DD.saveToDisk(index, meta_data, data)
 
-    #Step 5: Do data handling and parsing
-    #Load file to memory
+    # Step 5: Do data handling and parsing
+    # Load file to memory
     logger.info("Initialize CSVData and parsedData")
     CSVData = []
     parsedData = []
@@ -125,13 +124,12 @@ if __name__ == "__main__":
         logger.info(f"Save the parsed data for {index} to disk.")
         DP.saveToDisk(index, CSVData)
 
+    # Step 6: Do analysis
+    # Write a couple of analysis functions, start with Simple Moving Average, year-on-year growth on a specific date.
 
-    #Step 6: Do analysis
-    #Write a couple of analysis functions, start with Simple Moving Average, year-on-year growth on a specific date.
+    # Step 7: Output to file
+    # Output all analysis and resulting signals to a new file.
 
-    #Step 7: Output to file
-    #Output all analysis and resulting signals to a new file.
-
-    #Step 8: Output to dashboard
-    #Load up output file
-    #Process into dashboard
+    # Step 8: Output to dashboard
+    # Load up output file
+    # Process into dashboard
