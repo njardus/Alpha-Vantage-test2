@@ -10,7 +10,7 @@ def init():
 # Steps to add a new settings value:
 # Step 1: Populate limits and defaults here and initialize:
 debugLevelDefault = False
-debugLevel = True
+debugLevel = False
 
 maximumDataAgeLowerLimit = 60 # Seconds
 maximumDataAgeDefault = 4*60*60 # Seconds

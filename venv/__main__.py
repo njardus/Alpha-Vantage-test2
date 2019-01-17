@@ -2,16 +2,10 @@ from loguru import logger
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.techindicators import TechIndicators
 import os
-import pandas as pd
 
-import universe
-import dataDownload as dataDl
-import dataProcess as dataP
-
+from settings import universe, settings
+from data import process as dp, download as dl
 from drawup import drawmain
-
-import settings
-
 
 logger.info("Starting " + __file__)
 
@@ -26,8 +20,8 @@ def initialize():
     init_tech = TechIndicators(key=os.environ['ALPHAVANTAGE_API_KEY'], output_format='pandas', indexing_type='date')
 
     universe.init()
-    dataDl.init()
-    dataP.init()
+    dl.init()
+    dp.init()
     settings.init()
 
     outstanding_indices = []
@@ -70,7 +64,7 @@ if __name__ == "__main__":
     logger.info("Iterate through the universe")
     for index in uni:
         logger.info(f"Test if {index} has a file populated")
-        if dataDl.fileexists(index):
+        if dl.fileexists(index):
             logger.info(f"File exists for {index}")
             populatedIndices.append(index)
             logger.info(f"The list of populated indeces is now: {populatedIndices}")
@@ -86,7 +80,7 @@ if __name__ == "__main__":
     logger.info("Iterate through the populated universe.")
     for index in populatedIndices:
         logger.info(f"Test if the data on disk for {index} if fresh.")
-        if dataDl.isdatafresh(index, settings.maximumDataAge):
+        if dl.isdatafresh(index, settings.maximumDataAge):
             logger.info(f"Data for {index} is fresh enough.")
         else:
             logger.info(f"Data for {index} is out of date, so add to the outstanding list.")
@@ -100,14 +94,14 @@ if __name__ == "__main__":
     for index in outstandingIndices:
         logger.info(f"Download data for {index}.")
 
-        data, meta_data = ts.get_daily(index)
+        data, meta_data = ts.get_daily(index, outputsize="full")
 
         if (data.empty) and (meta_data.empty):
             logger.critical(f"No data pulled down for {index}.")
         else:
             logger.info(f"Clean out the data for {index}")
             # Step 5: Do data handling and parsing
-            data = dataDl.cleanclosedata(data)
+            data = dl.cleanclosedata(data)
             logger.info(f"Send the data and metadata for {index} to be saved to disk.")
 
         # Step 6: Do analysis
@@ -123,22 +117,15 @@ if __name__ == "__main__":
         # Also:
         # Step 7: Output to file
         # Output all analysis and resulting signals to a new file.
-        dataDl.savetodisk(index, data)
+        dl.savetodisk(index, data)
 
     for index in uni:
-        import time
-        time.sleep(0.1)  # Just to ensure that our output is neat
+        # import time
+        # time.sleep(0.1)  # Just to ensure that our output is neat
 
-        data = dataDl.loadfile(index)
+        data = dl.loadfile(index)
 
-        # print(data.head())
-        # print()
-        # print()
-        # print(data.close)
-
-        # data.info()
-
-        drawmain.drawtest(data)
+        drawmain.drawtest(data, index)
 
 
 

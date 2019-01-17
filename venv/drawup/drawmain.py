@@ -2,7 +2,7 @@ import plotly.graph_objs as go
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot
 
 
-def drawtest(df):
+def drawtest(df, ticker):
     # Creating Close
     close = go.Scatter(
         x=df.index.values,
@@ -40,9 +40,12 @@ def drawtest(df):
         text=df.index.values)
 
     data = [close, sma015, sma050, sma200]
-    layout = dict(title='xxxxxxx',
+    layout = dict(title=ticker,
                   xaxis=dict(title='yyyyyy', ticklen=5, zeroline= False)
                   )
 
-    fig = dict(data=data, layout = layout)
-    plot(fig)
+    file = "..\plots\close." + ticker + ".html"
+
+    fig = dict(data=data, layout=layout)
+    plot(fig, filename=file)
+

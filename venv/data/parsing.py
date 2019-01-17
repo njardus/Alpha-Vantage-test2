@@ -2,7 +2,8 @@ from loguru import logger
 import pandas as pd
 import os
 
-import dataDownload as DD
+from data import download as DD
+
 
 def init():
     dirName = "../data"
