@@ -1,11 +1,17 @@
 from loguru import logger
 from alpha_vantage.timeseries import TimeSeries
+from alpha_vantage.techindicators import TechIndicators
 import os
+import pandas as pd
 
 import universe
-import dataDownload as DD
-import dataParsing as DP
+import dataDownload as dataDl
+import dataProcess as dataP
+
+from drawup import drawmain
+
 import settings
+
 
 logger.info("Starting " + __file__)
 
@@ -13,29 +19,30 @@ logger.info("Starting " + __file__)
 def initialize():
     logger.info("Initializing and loading settings.")
 
-    todoLogLevel = logger.level("TODO", no=10, color="<blue>")
-    logger.info(f"Additional log level added for TODO: {todoLogLevel}")
+    todo_log_level = logger.level("TODO", no=10, color="<blue>")
+    logger.info(f"Additional log level added for TODO: {todo_log_level}")
 
-    ts = TimeSeries(key=os.environ['ALPHAVANTAGE_API_KEY'])
+    init_ts = TimeSeries(key=os.environ['ALPHAVANTAGE_API_KEY'], output_format='pandas', indexing_type='date')
+    init_tech = TechIndicators(key=os.environ['ALPHAVANTAGE_API_KEY'], output_format='pandas', indexing_type='date')
 
     universe.init()
-    DD.init()
-    DP.init()
+    dataDl.init()
+    dataP.init()
     settings.init()
 
-    outstandingIndices = []
-    populatedIndices = []
+    outstanding_indices = []
+    populated_indices = []
 
-    dataToSave = []
+    data_to_save = []
 
     settings.loadSettings()
     if settings.debugLevel:
-        uni = universe.testUniverse()
+        init_uni = universe.testUniverse()
     else:
-        uni = universe.holdings()
-    logger.info(f"Universe set to {uni}")
+        init_uni = universe.holdings()
+    logger.info(f"Universe set to {init_uni}")
 
-    return outstandingIndices, populatedIndices, uni, dataToSave, ts
+    return outstanding_indices, populated_indices, init_uni, data_to_save, init_ts, init_tech
 
 
 if __name__ == "__main__":
@@ -51,11 +58,11 @@ if __name__ == "__main__":
     Step 8: Output to dashboard"""
 
     # Initialize:
-    outstandingIndices, populatedIndices, uni, dataToSave, ts = initialize()
+    outstandingIndices, populatedIndices, uni, dataToSave, ts, tech = initialize()
 
     # Step 1a: See if any data is populated
 
-    logger.log("TODO", "TODO: 4) Change over from CSV files to a proper database.")
+    logger.log("TODO", "TODO: 4) Implement local database.")
     # Initially we'll do this with CSV's, but we'll port to DB's at some point.
 
     logger.info("Test if data is populated")
@@ -63,7 +70,7 @@ if __name__ == "__main__":
     logger.info("Iterate through the universe")
     for index in uni:
         logger.info(f"Test if {index} has a file populated")
-        if DD.fileExists(index):
+        if dataDl.fileexists(index):
             logger.info(f"File exists for {index}")
             populatedIndices.append(index)
             logger.info(f"The list of populated indeces is now: {populatedIndices}")
@@ -79,57 +86,64 @@ if __name__ == "__main__":
     logger.info("Iterate through the populated universe.")
     for index in populatedIndices:
         logger.info(f"Test if the data on disk for {index} if fresh.")
-        if DD.isDataFresh(index, settings.maximumDataAge):
+        if dataDl.isdatafresh(index, settings.maximumDataAge):
             logger.info(f"Data for {index} is fresh enough.")
         else:
             logger.info(f"Data for {index} is out of date, so add to the outstanding list.")
             outstandingIndices.append(index)
             logger.log("TODO", "TODO: 10) Remove the index from populatedIndices. I don't think that I'll use"
                                " populatedIndices again in this script, but I should still do this at some point.")
-            logger.info(f"The list of outstanding indeces is now: {outstandingIndices}")
+            logger.info(f"The list of outstanding indices is now: {outstandingIndices}")
 
     # Step 3: Pull any outstanding data
     logger.info("Pull any outstanding data.")
     for index in outstandingIndices:
-        data = []
-        meta_data = []
-
         logger.info(f"Download data for {index}.")
-        data, meta_data = ts.get_intraday(index)
-        if ((not data) and (not meta_data)):
+
+        data, meta_data = ts.get_daily(index)
+
+        if (data.empty) and (meta_data.empty):
             logger.critical(f"No data pulled down for {index}.")
         else:
+            logger.info(f"Clean out the data for {index}")
+            # Step 5: Do data handling and parsing
+            data = dataDl.cleanclosedata(data)
             logger.info(f"Send the data and metadata for {index} to be saved to disk.")
-            # Step 4: Save the data to disk
-            print(meta_data)
-            DD.saveToDisk(index, meta_data, data)
 
-    # Step 5: Do data handling and parsing
-    # Load file to memory
-    logger.info("Initialize CSVData and parsedData")
-    CSVData = []
-    parsedData = []
+        # Step 6: Do analysis
+        # Write a couple of analysis functions, start with Simple Moving Average, year-on-year growth on a specific date.
+        SMA15, meta_data = tech.get_sma(index, time_period=15)
+        data['SMA015'] = SMA15
+        SMA50, meta_data = tech.get_sma(index, time_period=50)
+        data['SMA050'] = SMA50
+        SMA200, meta_data = tech.get_sma(index, time_period=200)
+        data['SMA200'] = SMA200
 
-    if settings.debugLevel:
-        outstandingIndices = uni
-    for index in outstandingIndices:
-        logger.info(f"Attempting to load CSV for {index}.")
-        CSVData = DP.loadFile(index)
+        # Step 4: Save the data to disk
+        # Also:
+        # Step 7: Output to file
+        # Output all analysis and resulting signals to a new file.
+        dataDl.savetodisk(index, data)
 
-        # Do parsing
-        logger.info(f"Parse the CSV for {index}.")
-        parsedData = DP.parseData(CSVData)
+    for index in uni:
+        import time
+        time.sleep(0.1)  # Just to ensure that our output is neat
 
-        # Save to new file
-        logger.info(f"Save the parsed data for {index} to disk.")
-        DP.saveToDisk(index, CSVData)
+        data = dataDl.loadfile(index)
 
-    # Step 6: Do analysis
-    # Write a couple of analysis functions, start with Simple Moving Average, year-on-year growth on a specific date.
+        # print(data.head())
+        # print()
+        # print()
+        # print(data.close)
 
-    # Step 7: Output to file
-    # Output all analysis and resulting signals to a new file.
+        # data.info()
+
+        drawmain.drawtest(data)
+
+
+
 
     # Step 8: Output to dashboard
     # Load up output file
-    # Process into dashboard
+    # Process data into dashboard information
+    # Write to  dashboard

@@ -1,13 +1,10 @@
 from loguru import logger
+import pandas as pd
 import os
 
 import dataDownload as DD
 
 def init():
-    logger.log("TODO", "TODO: 1)a) Create functions to - load the CSV file")
-    logger.log("TODO", "TODO: 1)b)                     - parse the JSON file into easier to analyse formats")
-    logger.log("TODO", "TODO: 1)c)   *DONE*            - save the parsed data into a new file")
-
     dirName = "../data"
     if not os.path.exists(dirName):
         os.mkdir(dirName)
@@ -20,13 +17,13 @@ def generateParseFilename(ticker):
     return filename
 
 def fileExists(ticker):
-    """Function fileExists determines if the parsed file for the given ticker code input argument already exists.
+    """Function fileexists determines if the parsed file for the given ticker code input argument already exists.
 
     Input argument is ticker, a string that indicates the financial ticker involved, ie. NPN.JO, AAPL
 
     Output argument is a boolean, true if the file exists, false if not."""
 
-    logger.info("fileExists method running for " + ticker)
+    logger.info("fileexists method running for " + ticker)
 
     returnValue = True
 
@@ -48,12 +45,11 @@ def loadFile(ticker):
 
     Input argument is ticker, the ticker of the raw data we're looking through."""
 
-    data = []
+    f = []
 
-    if DD.fileExists(ticker):
-        f = open(DD.generateDownloadFilename(ticker), "rt")
-        data = f.read()
-    return data
+    if DD.fileexists(ticker):
+        f = pd.read_pickle(DD.generateDownloadFilename())
+    return f
 
 
 def parseData(data):
@@ -68,19 +64,16 @@ def parseData(data):
 
 
 def saveToDisk(ticker, data):
-    """Function to save the parsed data to disk.
+    """Function to save the data gathered to disk. This function will, in future, also update the index csv file.
 
     Input arguments are the ticker,  a string that indicates the financial ticker involved, ie. NPN.JO, AAPL,
-    parsed_data, the parsed output that we're interested in."""
-    logger.info("Start the saveToDisk function.")
+    data, the data returned by the alpha_vantage time series function."""
+    logger.info("Start the savetodisk function.")
 
     filename = generateParseFilename(ticker)
 
     logger.info(f"Filename generated: {filename}")
 
-    logger.info("Trying to open file.")
+    logger.info("Trying to save file.")
     logger.info(f"File location: {filename}")
-    with open(filename, 'w') as f:
-        f.write(data)
-#        json.dump(meta_data, f, sort_keys=False, indent=4)
- #       json.dump(data, f, sort_keys=False, indent=4)
+    data.to_pickle(filename)
