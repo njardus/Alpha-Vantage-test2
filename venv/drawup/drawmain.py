@@ -1,6 +1,6 @@
 import plotly.graph_objs as go
 from plotly.offline import download_plotlyjs, init_notebook_mode, plot
-
+# data up to and including 12/09/2018 is 100 times to small... ordata from 13/09/2018 onward is 100 times too large. - 17/01/2019
 
 def drawtest(df, ticker):
     # Creating Close
